@@ -47,3 +47,10 @@ def test_due_notifications_in_window(imported):
 def test_no_due_notifications_outside_window(imported):
     subscribe(imported, "alice", notify_before=30)
     assert imported.get("/notifications/due", params={"now": "2026-10-13T11:20:00"}).json() == []
+
+
+def test_quiet_hours_filter_night_notifications(imported):
+    subscribe(imported, "night-owl", notify_before=60, quiet_hours=False)
+    subscribe(imported, "sleeper", notify_before=60, quiet_hours=True)
+    due = imported.get("/notifications/due", params={"now": "2026-10-13T23:00:00"}).json()
+    assert [n["user_id"] for n in due] == ["night-owl"]
