@@ -1,7 +1,7 @@
 import pytest
-from app.services.addresses import find_queue
 
 from app.models import Address
+from app.services.addresses import find_queue
 
 
 @pytest.fixture

@@ -1,29 +1,49 @@
-"""Парсинг графіка відключень у модель «черга → інтервали»."""
+"""Парсинг графіка відключень у модель «черга → інтервали».
+
+Інтервал — час відключення (start, end). Якщо end <= start, інтервал перетинає опівніч;
+"24:00" трактується як кінець доби (time(0, 0)).
+"""
 
 import re
 from datetime import time
 
+Interval = tuple[time, time]
+
 _INTERVAL = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
+_SEPARATORS = re.compile(r"[,;]")
 
 
 class ScheduleParseError(ValueError):
     pass
 
 
-def parse_intervals(text: str) -> list[tuple[time, time]]:
-    result = []
-    for part in re.split(r"[,;]", text):
-        part = part.strip()
-        if not part:
-            continue
-        match = _INTERVAL.match(part)
-        if not match:
-            raise ScheduleParseError(f"Некоректний інтервал: {part!r}")
-        h1, m1, h2, m2 = map(int, match.groups())
-        if h1 > 23 or m1 > 59 or h2 > 24 or m2 > 59 or (h2 == 24 and m2 != 0):
-            raise ScheduleParseError(f"Некоректний час: {part!r}")
-        start, end = time(h1, m1), time(h2 % 24, m2)
-        if start == end:
-            raise ScheduleParseError(f"Порожній інтервал: {part!r}")
-        result.append((start, end))
-    return sorted(result)
+def _to_time(hour: int, minute: int, *, allow_24: bool, raw: str) -> time:
+    if minute > 59 or hour > 24 or (hour == 24 and (minute or not allow_24)):
+        raise ScheduleParseError(f"Некоректний час у {raw!r}")
+    return time(hour % 24, minute)
+
+
+def _parse_one(raw: str) -> Interval:
+    match = _INTERVAL.match(raw)
+    if not match:
+        raise ScheduleParseError(f"Некоректний інтервал: {raw!r}")
+    h1, m1, h2, m2 = map(int, match.groups())
+    start = _to_time(h1, m1, allow_24=False, raw=raw)
+    end = _to_time(h2, m2, allow_24=True, raw=raw)
+    if start == end:
+        raise ScheduleParseError(f"Порожній інтервал: {raw!r}")
+    return start, end
+
+
+def parse_intervals(text: str) -> list[Interval]:
+    parts = (p.strip() for p in _SEPARATORS.split(text))
+    return sorted(_parse_one(p) for p in parts if p)
+
+
+def _fmt(value: time, *, is_end: bool) -> str:
+    return "24:00" if is_end and value == time(0, 0) else value.strftime("%H:%M")
+
+
+def format_intervals(intervals: list[Interval]) -> str:
+    """Канонічний рядок графіка: "08:00-12:00, 16:00-20:00"."""
+    return ", ".join(f"{_fmt(s, is_end=False)}-{_fmt(e, is_end=True)}" for s, e in intervals)

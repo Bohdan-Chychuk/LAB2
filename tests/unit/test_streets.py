@@ -1,7 +1,7 @@
 import pytest
-from app.services.addresses import suggest_streets
 
 from app.models import Address
+from app.services.addresses import suggest_streets
 
 
 @pytest.fixture

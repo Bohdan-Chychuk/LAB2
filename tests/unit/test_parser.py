@@ -1,6 +1,7 @@
 from datetime import time
 
 import pytest
+
 from app.services.parser import ScheduleParseError, parse_intervals
 
 
