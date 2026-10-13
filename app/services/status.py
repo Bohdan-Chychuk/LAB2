@@ -40,3 +40,14 @@ def next_change(intervals: list[Interval], now: datetime) -> datetime | None:
         if start > now:
             return start
     return None
+
+
+def next_outage(intervals: list[Interval], now: datetime) -> datetime | None:
+    """Початок найближчого відключення, що починається після now."""
+    return next((start for start, _ in outage_periods(intervals, now) if start > now), None)
+
+
+def minutes_until(moment: datetime | None, now: datetime) -> int | None:
+    if moment is None:
+        return None
+    return int((moment - now).total_seconds() // 60)

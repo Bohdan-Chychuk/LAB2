@@ -73,6 +73,7 @@ def get_status(street: str, house: str, session: SessionDep, now: datetime | Non
     now = now or datetime.now()
     address = require_address(session, street, house)
     intervals = schedules.get_intervals(session, address.queue) or []
+    outage = status.next_outage(intervals, now)
     return {
         "street": address.street,
         "house": address.house,
@@ -80,4 +81,6 @@ def get_status(street: str, house: str, session: SessionDep, now: datetime | Non
         "now": now,
         "planned": "on" if status.is_power_on(intervals, now) else "off",
         "next_change": status.next_change(intervals, now),
+        "next_outage": outage,
+        "minutes_to_outage": status.minutes_until(outage, now),
     }
