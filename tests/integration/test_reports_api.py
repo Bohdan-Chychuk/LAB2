@@ -19,3 +19,16 @@ def test_post_report_unknown_address_404(client):
 
 def test_post_report_invalid_status_422(client):
     assert report(client, "u1", status="maybe").status_code == 422
+
+
+def test_three_reports_set_actual_status(client):
+    for user, house in (("u1", "10"), ("u2", "25"), ("u3", "48")):
+        assert report(client, user, house=house, street="Шевченка").status_code == 201
+    params = {**ADDRESS, "now": "2026-10-13T18:05:00"}
+    assert client.get("/status", params=params).json()["actual"] == "off"
+
+
+def test_actual_is_null_without_enough_reports(client):
+    report(client, "u1")
+    params = {**ADDRESS, "now": "2026-10-13T18:05:00"}
+    assert client.get("/status", params=params).json()["actual"] is None
