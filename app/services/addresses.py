@@ -29,3 +29,14 @@ def get_address(session: Session, street: str, house: str) -> Address | None:
 def find_queue(session: Session, street: str, house: str) -> int | None:
     address = get_address(session, street, house)
     return address.queue if address else None
+
+
+def suggest_streets(session: Session, query: str, limit: int = 10) -> list[str]:
+    """Унікальні назви вулиць, що містять query (без урахування регістру), спершу за префіксом."""
+    needle = normalize_street(query) or normalize(query)
+    if not needle:
+        return []
+    streets = {a.street for a in session.scalars(select(Address))}
+    matches = [s for s in streets if needle in normalize(s)]
+    matches.sort(key=lambda s: (not normalize(s).startswith(needle), s))
+    return matches[:limit]

@@ -32,6 +32,11 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@router.get("/streets")
+def get_streets(session: SessionDep, q: str = "") -> list[str]:
+    return addresses.suggest_streets(session, q)
+
+
 @router.get("/queue")
 def get_queue(street: str, house: str, session: SessionDep) -> dict:
     address = require_address(session, street, house)
