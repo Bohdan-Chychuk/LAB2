@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>СвітлоЛьвів Lite</title>
+  <style>
+    :root {
+      --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #667085; --border: #e2e5ea;
+      --accent: #2563eb; --on: #16a34a; --on-bg: #dcfce7; --off: #dc2626; --off-bg: #fee2e2;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11151c; --card: #1a202a; --text: #e6e9ef; --muted: #98a2b3; --border: #2b3340;
+        --accent: #60a5fa; --on: #4ade80; --on-bg: #14361f; --off: #f87171; --off-bg: #3b1717;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    .subtitle { color: var(--muted); margin: 0 0 20px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    form.address { display: grid; grid-template-columns: 1fr 110px auto; gap: 8px; }
+    input, button { font: inherit; padding: 10px 12px; border-radius: 8px; }
+    input { border: 1px solid var(--border); background: var(--bg); color: var(--text); min-width: 0; }
+    button { border: 0; background: var(--accent); color: #fff; cursor: pointer; font-weight: 600; }
+    button:disabled { opacity: .6; cursor: default; }
+    .error { color: var(--off); margin: 8px 0 0; min-height: 1.5em; }
+    .hidden { display: none; }
+    .queue { font-size: 1.1rem; }
+    .queue strong { font-size: 1.4rem; }
+    .indicator {
+      border-radius: 12px; padding: 20px; text-align: center; font-size: 1.6rem; font-weight: 700;
+    }
+    .indicator.on { background: var(--on-bg); color: var(--on); }
+    .indicator.off { background: var(--off-bg); color: var(--off); }
+    .meta { color: var(--muted); margin: 10px 0 0; }
+    .actual { margin-top: 12px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+    td.empty { color: var(--muted); }
+    @media (max-width: 520px) {
+      form.address { grid-template-columns: 1fr 90px; }
+      form.address button { grid-column: 1 / -1; }
+      .indicator { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>СвітлоЛьвів Lite</h1>
+  <p class="subtitle">Графік відключень і фактичний стан світла за вашою адресою</p>
+
+  <section class="card">
+    <form id="address-form" class="address" autocomplete="off">
+      <input id="street" name="street" list="streets" placeholder="Вулиця, напр. Шевченка" required>
+      <datalist id="streets"></datalist>
+      <input id="house" name="house" placeholder="Будинок" required>
+      <button id="find" type="submit">Показати</button>
+    </form>
+    <p id="error" class="error" role="alert"></p>
+  </section>
+
+  <div id="result" class="hidden">
+    <section class="card">
+      <p class="queue">Ваша черга: <strong id="queue">—</strong></p>
+      <div id="status-indicator" class="indicator">—</div>
+      <p id="next-change" class="meta"></p>
+      <p id="next-outage" class="meta"></p>
+      <p id="actual" class="actual"></p>
+    </section>
+
+    <section class="card">
+      <h2>Графік відключень на сьогодні</h2>
+      <table>
+        <thead><tr><th>Початок</th><th>Кінець</th></tr></thead>
+        <tbody id="schedule"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let current = null;
+
+  async function api(url, options) {
+    const response = await fetch(url, options);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw Object.assign(new Error(body.detail || "Помилка запиту"), { status: response.status });
+    return body;
+  }
+
+  const hhmm = (iso) => iso ? iso.slice(11, 16) : "";
+  const dayLabel = (iso) => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    return iso.slice(0, 10) === today ? "сьогодні" : "завтра";
+  };
+  const duration = (minutes) => {
+    const h = Math.floor(minutes / 60), m = minutes % 60;
+    return h ? `${h} год ${m} хв` : `${m} хв`;
+  };
+
+  $("street").addEventListener("input", async (event) => {
+    const q = event.target.value.trim();
+    if (q.length < 2) return;
+    const streets = await api(`/streets?q=${encodeURIComponent(q)}`).catch(() => []);
+    $("streets").innerHTML = streets.map((s) => `<option value="${s}">`).join("");
+  });
+
+  function renderSchedule(intervals) {
+    $("schedule").innerHTML = intervals.length
+      ? intervals.map((i) => `<tr><td>${i.start}</td><td>${i.end}</td></tr>`).join("")
+      : `<tr><td colspan="2" class="empty">Відключень не заплановано</td></tr>`;
+  }
+
+  function renderStatus(s) {
+    const on = s.planned === "on";
+    const indicator = $("status-indicator");
+    indicator.className = `indicator ${on ? "on" : "off"}`;
+    indicator.textContent = on ? "Світло є" : "Світла немає";
+    $("next-change").textContent = s.next_change
+      ? `${on ? "Відключення" : "Увімкнення"} о ${hhmm(s.next_change)} (${dayLabel(s.next_change)})`
+      : "Змін за графіком не очікується";
+    $("next-outage").textContent = s.next_outage
+      ? `Наступне відключення через ${duration(s.minutes_to_outage)}`
+      : "Відключень не заплановано";
+    $("actual").textContent = s.actual
+      ? `Фактично за репортами сусідів: ${s.actual === "on" ? "світло є" : "світла немає"}`
+      : "Фактичний стан: недостатньо репортів";
+  }
+
+  async function refreshStatus() {
+    const params = new URLSearchParams(current);
+    renderStatus(await api(`/status?${params}`));
+  }
+
+  $("address-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    $("error").textContent = "";
+    const address = { street: $("street").value.trim(), house: $("house").value.trim() };
+    try {
+      const { queue, street, house } = await api(`/queue?${new URLSearchParams(address)}`);
+      current = { street, house };
+      $("queue").textContent = queue;
+      const schedule = await api(`/schedule/${queue}`).catch(() => ({ intervals: [] }));
+      renderSchedule(schedule.intervals);
+      await refreshStatus();
+      $("result").classList.remove("hidden");
+    } catch (error) {
+      $("result").classList.add("hidden");
+      $("error").textContent = error.message;
+    }
+  });
+</script>
+</body>
+</html>

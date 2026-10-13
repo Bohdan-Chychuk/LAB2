@@ -2,9 +2,12 @@
 
 from collections.abc import Iterator
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +17,7 @@ from app.services import addresses, notifications, reports, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
 
 router = APIRouter()
+templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "web" / "templates")
 
 
 def get_session(request: Request) -> Iterator[Session]:
@@ -29,6 +33,11 @@ def require_address(session: Session, street: str, house: str) -> Address:
     if address is None:
         raise HTTPException(404, detail=f"Адресу не знайдено: {street}, {house}")
     return address
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+def index(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "index.html")
 
 
 @router.get("/health")
