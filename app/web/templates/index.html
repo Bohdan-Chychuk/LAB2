@@ -34,8 +34,9 @@
     button { border: 0; background: var(--accent); color: #fff; cursor: pointer; font-weight: 600; }
     button:disabled { opacity: .6; cursor: default; }
     .error { color: var(--off); margin: 8px 0 0; min-height: 1.5em; }
+    .error:empty, .message:empty { margin: 0; min-height: 0; }
     .hidden { display: none; }
-    .queue { font-size: 1.1rem; }
+    .queue { font-size: 1.1rem; margin: 0 0 12px; }
     .queue strong { font-size: 1.4rem; }
     .indicator {
       border-radius: 12px; padding: 20px; text-align: center; font-size: 1.6rem; font-weight: 700;
