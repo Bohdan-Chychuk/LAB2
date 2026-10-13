@@ -131,9 +131,12 @@ class ReportIn(BaseModel):
 @router.post("/reports", status_code=201)
 def create_report(data: ReportIn, session: SessionDep, now: datetime | None = None) -> dict:
     address = require_address(session, data.street, data.house)
-    report = reports.add_report(
-        session, data.user_id, address.street, address.house, data.status, now or datetime.now()
-    )
+    try:
+        report = reports.add_report(
+            session, data.user_id, address.street, address.house, data.status, now or datetime.now()
+        )
+    except reports.RateLimitError as exc:
+        raise HTTPException(429, detail=str(exc)) from exc
     return {
         "id": report.id,
         "user_id": report.user_id,

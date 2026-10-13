@@ -11,6 +11,11 @@ from app.models import Report
 STATUSES = ("on", "off")
 THRESHOLD = 3
 WINDOW = timedelta(minutes=30)
+ANTISPAM = timedelta(minutes=10)
+
+
+class RateLimitError(Exception):
+    pass
 
 
 def add_report(
@@ -18,6 +23,17 @@ def add_report(
 ) -> Report:
     if status not in STATUSES:
         raise ValueError(f"Невідомий статус: {status!r}")
+    recent = session.scalar(
+        select(Report.id).where(
+            Report.user_id == user_id,
+            Report.street == street,
+            Report.house == house,
+            Report.created_at > now - ANTISPAM,
+            Report.created_at <= now,
+        )
+    )
+    if recent is not None:
+        raise RateLimitError("Не частіше 1 репорту на адресу за 10 хвилин")
     report = Report(user_id=user_id, street=street, house=house, status=status, created_at=now)
     session.add(report)
     session.commit()
