@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Address, Subscription
-from app.services import addresses, notifications, schedules, status
+from app.services import addresses, notifications, reports, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
 
 router = APIRouter()
@@ -118,3 +118,26 @@ def get_due_notifications(session: SessionDep, now: datetime | None = None) -> l
     return notifications.due_notifications(
         subs, schedules.load_intervals(session), now or datetime.now()
     )
+
+
+class ReportIn(BaseModel):
+    user_id: str
+    street: str
+    house: str
+    status: Literal["on", "off"]
+
+
+@router.post("/reports", status_code=201)
+def create_report(data: ReportIn, session: SessionDep, now: datetime | None = None) -> dict:
+    address = require_address(session, data.street, data.house)
+    report = reports.add_report(
+        session, data.user_id, address.street, address.house, data.status, now or datetime.now()
+    )
+    return {
+        "id": report.id,
+        "user_id": report.user_id,
+        "street": report.street,
+        "house": report.house,
+        "status": report.status,
+        "created_at": report.created_at,
+    }
