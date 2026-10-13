@@ -1,13 +1,14 @@
 """REST-ендпоінти. Тонкий шар над app/services."""
 
 from collections.abc import Iterator
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.models import Address
-from app.services import addresses, schedules
+from app.services import addresses, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
 
 router = APIRouter()
@@ -64,4 +65,19 @@ def get_schedule(queue: int, session: SessionDep) -> dict:
             dict(zip(("start", "end"), format_intervals([i]).split("-"), strict=True))
             for i in intervals
         ],
+    }
+
+
+@router.get("/status")
+def get_status(street: str, house: str, session: SessionDep, now: datetime | None = None) -> dict:
+    now = now or datetime.now()
+    address = require_address(session, street, house)
+    intervals = schedules.get_intervals(session, address.queue) or []
+    return {
+        "street": address.street,
+        "house": address.house,
+        "queue": address.queue,
+        "now": now,
+        "planned": "on" if status.is_power_on(intervals, now) else "off",
+        "next_change": status.next_change(intervals, now),
     }
