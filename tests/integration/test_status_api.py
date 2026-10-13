@@ -29,3 +29,17 @@ def test_status_when_power_is_on(imported):
 
 def test_status_unknown_address_404(imported):
     assert imported.get("/status", params={"street": "Нема", "house": "1"}).status_code == 404
+
+
+def test_status_contains_next_outage_tomorrow(imported):
+    body = imported.get("/status", params={**ADDRESS, "now": "2026-10-13T20:00:00"}).json()
+    assert body["next_outage"] == "2026-10-14T00:00:00"
+    assert body["minutes_to_outage"] == 240
+
+
+def test_status_without_outages_has_null_next_outage(imported):
+    params = {"street": "Зелена", "house": "149", "now": "2026-10-13T10:00:00"}  # черга 6
+    body = imported.get("/status", params=params).json()
+    assert body["planned"] == "on"
+    assert body["next_outage"] is None
+    assert body["minutes_to_outage"] is None
