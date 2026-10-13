@@ -2,13 +2,15 @@
 
 from collections.abc import Iterator
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Address
-from app.services import addresses, schedules, status
+from app.models import Address, Subscription
+from app.services import addresses, notifications, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
 
 router = APIRouter()
@@ -84,3 +86,35 @@ def get_status(street: str, house: str, session: SessionDep, now: datetime | Non
         "next_outage": outage,
         "minutes_to_outage": status.minutes_until(outage, now),
     }
+
+
+class SubscriptionIn(BaseModel):
+    user_id: str
+    street: str
+    house: str
+    notify_before: Literal[15, 30, 60] = 30
+    quiet_hours: bool = False
+
+
+@router.post("/subscriptions", status_code=201)
+def create_subscription(data: SubscriptionIn, session: SessionDep) -> dict:
+    address = require_address(session, data.street, data.house)
+    sub = Subscription(
+        user_id=data.user_id,
+        street=address.street,
+        house=address.house,
+        queue=address.queue,
+        notify_before=data.notify_before,
+        quiet_hours=data.quiet_hours,
+    )
+    session.add(sub)
+    session.commit()
+    return {"id": sub.id, **data.model_dump(), "street": sub.street, "queue": sub.queue}
+
+
+@router.get("/notifications/due")
+def get_due_notifications(session: SessionDep, now: datetime | None = None) -> list[dict]:
+    subs = session.scalars(select(Subscription).order_by(Subscription.id)).all()
+    return notifications.due_notifications(
+        subs, schedules.load_intervals(session), now or datetime.now()
+    )
