@@ -1,0 +1,147 @@
+[
+  {
+    "street": "Шевченка",
+    "house": "1",
+    "queue": 1
+  },
+  {
+    "street": "Шевченка",
+    "house": "10",
+    "queue": 2
+  },
+  {
+    "street": "Шевченка",
+    "house": "25",
+    "queue": 3
+  },
+  {
+    "street": "Шевченка",
+    "house": "48",
+    "queue": 4
+  },
+  {
+    "street": "Городоцька",
+    "house": "5",
+    "queue": 2
+  },
+  {
+    "street": "Городоцька",
+    "house": "120",
+    "queue": 3
+  },
+  {
+    "street": "Городоцька",
+    "house": "174",
+    "queue": 4
+  },
+  {
+    "street": "Личаківська",
+    "house": "12",
+    "queue": 3
+  },
+  {
+    "street": "Личаківська",
+    "house": "33",
+    "queue": 4
+  },
+  {
+    "street": "Личаківська",
+    "house": "81",
+    "queue": 5
+  },
+  {
+    "street": "Зелена",
+    "house": "7",
+    "queue": 4
+  },
+  {
+    "street": "Зелена",
+    "house": "101",
+    "queue": 5
+  },
+  {
+    "street": "Зелена",
+    "house": "149",
+    "queue": 6
+  },
+  {
+    "street": "Стрийська",
+    "house": "2",
+    "queue": 5
+  },
+  {
+    "street": "Стрийська",
+    "house": "45",
+    "queue": 6
+  },
+  {
+    "street": "Стрийська",
+    "house": "202",
+    "queue": 1
+  },
+  {
+    "street": "Наукова",
+    "house": "3",
+    "queue": 6
+  },
+  {
+    "street": "Наукова",
+    "house": "7А",
+    "queue": 1
+  },
+  {
+    "street": "Наукова",
+    "house": "29",
+    "queue": 2
+  },
+  {
+    "street": "Княгині Ольги",
+    "house": "14",
+    "queue": 1
+  },
+  {
+    "street": "Княгині Ольги",
+    "house": "100",
+    "queue": 2
+  },
+  {
+    "street": "Сихівська",
+    "house": "8",
+    "queue": 2
+  },
+  {
+    "street": "Сихівська",
+    "house": "20",
+    "queue": 3
+  },
+  {
+    "street": "Чорновола",
+    "house": "4",
+    "queue": 3
+  },
+  {
+    "street": "Чорновола",
+    "house": "57",
+    "queue": 4
+  },
+  {
+    "street": "Чорновола",
+    "house": "67",
+    "queue": 5
+  },
+  {
+    "street": "Шептицьких",
+    "house": "9",
+    "queue": 4
+  },
+  {
+    "street": "Шептицьких",
+    "house": "21",
+    "queue": 5
+  },
+  {
+    "street": "Шкільна",
+    "house": "3",
+    "queue": 5
+  }
+]
