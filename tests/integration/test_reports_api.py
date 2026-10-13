@@ -32,3 +32,10 @@ def test_actual_is_null_without_enough_reports(client):
     report(client, "u1")
     params = {**ADDRESS, "now": "2026-10-13T18:05:00"}
     assert client.get("/status", params=params).json()["actual"] is None
+
+
+def test_repeated_report_within_10_minutes_returns_429(client):
+    assert report(client, "u1", now="2026-10-13T18:00:00").status_code == 201
+    response = report(client, "u1", status="on", now="2026-10-13T18:05:00")
+    assert response.status_code == 429
+    assert report(client, "u1", status="on", now="2026-10-13T18:10:00").status_code == 201
