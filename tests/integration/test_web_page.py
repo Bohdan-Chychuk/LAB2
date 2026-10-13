@@ -7,3 +7,10 @@ def test_index_page_renders(client):
     assert 'name="viewport"' in html
     for element_id in ("street", "house", "queue", "schedule", "status-indicator", "actual"):
         assert f'id="{element_id}"' in html
+
+
+def test_index_page_has_report_buttons(client):
+    html = client.get("/").text
+    for element_id in ("user-id", "btn-on", "btn-off", "report-message"):
+        assert f'id="{element_id}"' in html
+    assert "Світло є" in html and "Світла немає" in html

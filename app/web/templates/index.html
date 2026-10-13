@@ -44,12 +44,18 @@
     .indicator.off { background: var(--off-bg); color: var(--off); }
     .meta { color: var(--muted); margin: 10px 0 0; }
     .actual { margin-top: 12px; font-weight: 600; }
+    .report { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+    .report button.on { background: var(--on); }
+    .report button.off { background: var(--off); }
+    .message { margin: 8px 0 0; min-height: 1.5em; color: var(--muted); }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--border); }
     td.empty { color: var(--muted); }
     @media (max-width: 520px) {
       form.address { grid-template-columns: 1fr 90px; }
       form.address button { grid-column: 1 / -1; }
+      .report { grid-template-columns: 1fr 1fr; }
+      .report input { grid-column: 1 / -1; }
       .indicator { font-size: 1.3rem; }
     }
   </style>
@@ -76,6 +82,16 @@
       <p id="next-change" class="meta"></p>
       <p id="next-outage" class="meta"></p>
       <p id="actual" class="actual"></p>
+    </section>
+
+    <section class="card">
+      <h2>Що у вас зараз зі світлом?</h2>
+      <div class="report">
+        <input id="user-id" placeholder="Ваш user_id" aria-label="user_id">
+        <button id="btn-on" class="on" type="button" data-status="on">Світло є</button>
+        <button id="btn-off" class="off" type="button" data-status="off">Світла немає</button>
+      </div>
+      <p id="report-message" class="message" role="status"></p>
     </section>
 
     <section class="card">
@@ -162,6 +178,38 @@
       $("error").textContent = error.message;
     }
   });
+
+  const userId = $("user-id");
+  try {
+    userId.value = localStorage.getItem("svl-user-id") || `web-${Math.random().toString(36).slice(2, 8)}`;
+  } catch {
+    userId.value = `web-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async function sendReport(event) {
+    const status = event.currentTarget.dataset.status;
+    const buttons = [$("btn-on"), $("btn-off")];
+    buttons.forEach((b) => (b.disabled = true));
+    try {
+      try { localStorage.setItem("svl-user-id", userId.value); } catch {}
+      await api("/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...current, user_id: userId.value.trim(), status }),
+      });
+      $("report-message").textContent = `Дякуємо, ${userId.value}! Репорт «${status === "on" ? "світло є" : "світла немає"}» прийнято.`;
+      await refreshStatus();
+    } catch (error) {
+      $("report-message").textContent = error.status === 429
+        ? "Ви вже надсилали репорт для цієї адреси. Спробуйте за 10 хвилин."
+        : error.message;
+    } finally {
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  $("btn-on").addEventListener("click", sendReport);
+  $("btn-off").addEventListener("click", sendReport);
 </script>
 </body>
 </html>
