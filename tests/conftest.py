@@ -23,5 +23,5 @@ def session(db_url):
 
 @pytest.fixture
 def client(db_url):
-    with TestClient(create_app(db_url)) as c:
+    with TestClient(create_app(db_url, demo_schedule=False)) as c:
         yield c
