@@ -85,6 +85,7 @@ def get_status(street: str, house: str, session: SessionDep, now: datetime | Non
         "next_change": status.next_change(intervals, now),
         "next_outage": outage,
         "minutes_to_outage": status.minutes_until(outage, now),
+        "actual": reports.actual_status(session, address.street, now),
     }
 
 
