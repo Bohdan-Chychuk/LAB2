@@ -6,18 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.routes import router
-from app.db import Base, database_url, make_engine, make_session_factory
-from app.seed import seed_addresses, seed_schedule
+from app.bootstrap import init_database
 
 
 def create_app(db_url: str | None = None, demo_schedule: bool = True) -> FastAPI:
-    engine = make_engine(db_url or database_url())
-    Base.metadata.create_all(engine)
-    session_factory = make_session_factory(engine)
-    with session_factory() as session:
-        seed_addresses(session)
-        if demo_schedule:
-            seed_schedule(session)
+    engine, session_factory = init_database(db_url, demo_schedule=demo_schedule)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
