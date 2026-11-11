@@ -5,13 +5,15 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.domain import PowerState
-from app.services import addresses, reports, schedules, status
+from app.services import addresses
+from app.services.address_status import AddressStatus, address_status
 
 HELP = (
     "Я показую графік відключень світла у Львові.\n"
     "/address <вулиця> <будинок> — запам'ятати адресу, напр. /address Шевченка 10\n"
     "/status — чи є зараз світло і коли наступне відключення"
 )
+ACTUAL_TEXT = {PowerState.ON: "світло є", PowerState.OFF: "світла немає"}
 
 
 def parse_address(text: str) -> tuple[str, str] | None:
@@ -22,30 +24,33 @@ def parse_address(text: str) -> tuple[str, str] | None:
     return " ".join(parts[:-1]), parts[-1]
 
 
+def not_found(street: str, house: str) -> str:
+    return f"Адресу не знайдено: {street}, {house}"
+
+
 def address_text(session: Session, street: str, house: str) -> str:
     address = addresses.get_address(session, street, house)
     if address is None:
-        return f"Адресу не знайдено: {street}, {house}"
+        return not_found(street, house)
     return f"{address.street}, {address.house} — черга {address.queue}"
+
+
+def format_status(s: AddressStatus) -> str:
+    lines = [
+        f"{s.street}, {s.house} (черга {s.queue})",
+        "💡 Світло є" if s.is_on else "🌑 Світла немає",
+    ]
+    if s.next_change:
+        lines.append(f"{'Відключення' if s.is_on else 'Увімкнення'} о {s.next_change:%H:%M}")
+    if s.next_outage:
+        lines.append(f"Наступне відключення через {s.minutes_to_outage} хв")
+    if s.actual:
+        lines.append(f"За репортами сусідів: {ACTUAL_TEXT[s.actual]}")
+    return "\n".join(lines)
 
 
 def status_text(session: Session, street: str, house: str, now: datetime) -> str:
     address = addresses.get_address(session, street, house)
     if address is None:
-        return f"Адресу не знайдено: {street}, {house}"
-    intervals = schedules.get_intervals(session, address.queue) or []
-    on = status.is_power_on(intervals, now)
-    lines = [f"{address.street}, {address.house} (черга {address.queue})"]
-    lines.append("💡 Світло є" if on else "🌑 Світла немає")
-    change = status.next_change(intervals, now)
-    if change:
-        lines.append(f"{'Відключення' if on else 'Увімкнення'} о {change:%H:%M}")
-    outage = status.next_outage(intervals, now)
-    if outage:
-        lines.append(f"Наступне відключення через {status.minutes_until(outage, now)} хв")
-    actual = reports.actual_status(session, address.street, now)
-    if actual:
-        lines.append(
-            f"За репортами сусідів: {'світло є' if actual is PowerState.ON else 'світла немає'}"
-        )
-    return "\n".join(lines)
+        return not_found(street, house)
+    return format_status(address_status(session, address, now))

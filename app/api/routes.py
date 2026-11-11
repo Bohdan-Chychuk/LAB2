@@ -1,6 +1,7 @@
 """REST-ендпоінти. Тонкий шар над app/services."""
 
 from collections.abc import Iterator
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
@@ -15,7 +16,8 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.domain import PowerState
 from app.models import Address, Subscription
-from app.services import addresses, notifications, reports, schedules, status
+from app.services import addresses, notifications, reports, schedules
+from app.services.address_status import address_status
 from app.services.parser import ScheduleParseError, format_intervals
 
 router = APIRouter()
@@ -92,19 +94,7 @@ def get_schedule(queue: int, session: SessionDep) -> dict:
 @router.get("/status")
 def get_status(street: str, house: str, session: SessionDep, now: NowDep) -> dict:
     address = require_address(session, street, house)
-    intervals = schedules.get_intervals(session, address.queue) or []
-    outage = status.next_outage(intervals, now)
-    return {
-        "street": address.street,
-        "house": address.house,
-        "queue": address.queue,
-        "now": now,
-        "planned": PowerState.from_power(status.is_power_on(intervals, now)),
-        "next_change": status.next_change(intervals, now),
-        "next_outage": outage,
-        "minutes_to_outage": status.minutes_until(outage, now),
-        "actual": reports.actual_status(session, address.street, now),
-    }
+    return asdict(address_status(session, address, now))
 
 
 class SubscriptionIn(BaseModel):
