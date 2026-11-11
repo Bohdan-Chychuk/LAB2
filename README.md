@@ -1,10 +1,13 @@
 # СвітлоЛьвів Lite
 
+[![CI/CD](https://github.com/Bohdan-Chychuk/LAB2/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Bohdan-Chychuk/LAB2/actions/workflows/ci-cd.yml)
+
 Сервіс для мешканців Львова: черга відключень за адресою, графік на сьогодні, поточний статус світла,
 сповіщення перед відключенням і краудсорсингові репорти «Світло є / немає».
 
 Лабораторні роботи «Методології розробки ПЗ»: №2 — Extreme Programming (TDD, парне програмування,
-малі релізи, спільний стандарт коду), №3 — рефакторинг ([docs/REFACTORING.md](docs/REFACTORING.md)). Специфікація: [CLAUDE_CODE_SPEC.md](CLAUDE_CODE_SPEC.md),
+малі релізи, спільний стандарт коду), №3 — рефакторинг ([docs/REFACTORING.md](docs/REFACTORING.md)),
+№4 — конвеєр CI/CD на GitHub Actions ([docs/CI_CD.md](docs/CI_CD.md)). Специфікація: [CLAUDE_CODE_SPEC.md](CLAUDE_CODE_SPEC.md),
 беклог Jira: [svitlolviv_xp_jira.csv](svitlolviv_xp_jira.csv).
 
 ## Запуск
@@ -45,6 +48,15 @@ pytest tests/e2e
 
 Звіт: [docs/TEST_REPORT.md](docs/TEST_REPORT.md) — 102 тести, покриття `app` 99 %.
 
+## Docker
+
+```bash
+docker build -t svitlolviv .
+docker run -d -p 8000:8000 svitlolviv
+```
+
+Готовий образ після кожного успішного запуску конвеєра: `ghcr.io/bohdan-chychuk/lab2:latest`.
+
 ## Telegram-бот (опційно)
 
 ```bash
@@ -67,8 +79,10 @@ app/
   web/           templates/index.html, static/app.js, static/style.css
 bot/          aiogram-адаптер над services (DI через workflow_data)
 data/         адреси (~30) і графіки 6 черг
-tests/        unit / integration / e2e
-docs/         PLANNING.md, TEST_REPORT.md, REFACTORING.md
+tests/        unit / integration / e2e / smoke
+docs/         PLANNING.md, TEST_REPORT.md, REFACTORING.md, CI_CD.md
+.github/      workflows/ci-cd.yml — конвеєр CI/CD
+Dockerfile    артефакт поставки
 ```
 
 ## XP-процес

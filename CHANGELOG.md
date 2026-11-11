@@ -32,3 +32,9 @@
 - CSS/JS винесено в `app/web/static`, захист від XSS (SVL-45)
 - 135 тестів, деталі — `docs/REFACTORING.md`
 
+## v1.2 — CI/CD (ЛР № 4)
+- Dockerfile — артефакт поставки (SVL-50)
+- GitHub Actions: статичний аналіз (ruff, black, bandit, xenon), збірка, unit + integration
+  з порогом покриття 90 %, e2e Playwright (SVL-51–SVL-53)
+- CD: публікація образу в GHCR, розгортання в staging і smoke-тести (SVL-54, SVL-55)
+- Документація конвеєра і бейдж статусу (SVL-49, SVL-58)
