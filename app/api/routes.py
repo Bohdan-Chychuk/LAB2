@@ -14,11 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.api.schemas import ScheduleIn
 from app.domain import PowerState
 from app.models import Address, Subscription
 from app.services import addresses, notifications, reports, schedules
 from app.services.address_status import address_status
-from app.services.parser import ScheduleParseError, format_interval
+from app.services.parser import format_interval
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "web" / "templates")
@@ -69,12 +70,8 @@ def get_queue(street: str, house: str, session: SessionDep) -> dict:
 
 
 @router.post("/schedules/import")
-def import_schedule(data: dict, session: SessionDep) -> dict:
-    try:
-        changed = schedules.import_schedule(session, data)
-    except (ScheduleParseError, KeyError, ValueError, AttributeError) as exc:
-        raise HTTPException(422, detail=f"Некоректний графік: {exc}") from exc
-    return {"changed_queues": changed}
+def import_schedule(data: ScheduleIn, session: SessionDep) -> dict:
+    return {"changed_queues": schedules.import_schedule(session, data.queues)}
 
 
 @router.get("/schedule/{queue}")

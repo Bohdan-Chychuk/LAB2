@@ -24,4 +24,4 @@ def seed_schedule(session: Session) -> None:
     if session.scalar(select(func.count()).select_from(Schedule)):
         return
     data = json.loads((DATA_DIR / "schedules" / "today.json").read_text(encoding="utf-8"))
-    import_schedule(session, data)
+    import_schedule(session, data["queues"])

@@ -25,27 +25,27 @@ def test_diff_returns_changed_and_new_queues_sorted():
 
 
 def test_first_import_marks_all_queues_changed(session):
-    assert import_schedule(session, _load("today.json")) == [1, 2, 3, 4, 5, 6]
+    assert import_schedule(session, _load("today.json")["queues"]) == [1, 2, 3, 4, 5, 6]
 
 
 def test_reimport_same_schedule_returns_empty_list(session):
-    import_schedule(session, _load("today.json"))
-    assert import_schedule(session, _load("today.json")) == []
+    import_schedule(session, _load("today.json")["queues"])
+    assert import_schedule(session, _load("today.json")["queues"]) == []
 
 
 def test_reimport_changed_schedule_returns_changed_queue(session):
-    import_schedule(session, _load("today.json"))
-    assert import_schedule(session, _load("changed.json")) == [3]
+    import_schedule(session, _load("today.json")["queues"])
+    assert import_schedule(session, _load("changed.json")["queues"]) == [3]
     assert load_schedules(session)[3] == "06:00-10:00, 20:00-24:00"
 
 
 def test_formatting_differences_are_not_changes(session):
-    import_schedule(session, {"queues": {"1": "08:00-12:00, 16:00-20:00"}})
-    assert import_schedule(session, {"queues": {"1": "16:00 - 20:00; 8:00-12:00"}}) == []
+    import_schedule(session, {"1": "08:00-12:00, 16:00-20:00"})
+    assert import_schedule(session, {"1": "16:00 - 20:00; 8:00-12:00"}) == []
 
 
 def test_import_invalid_schedule_raises_and_keeps_old(session):
-    import_schedule(session, {"queues": {"1": "08:00-12:00"}})
+    import_schedule(session, {"1": "08:00-12:00"})
     with pytest.raises(ScheduleParseError):
-        import_schedule(session, {"queues": {"1": "зранку"}})
+        import_schedule(session, {"1": "зранку"})
     assert load_schedules(session) == {1: "08:00-12:00"}

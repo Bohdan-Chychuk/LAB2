@@ -14,7 +14,7 @@ NOW = datetime(2026, 10, 13, 13, 0)
 def test_address_status_combines_schedule_and_reports(session):
     address = Address(street="Шевченка", house="10", queue=2)
     session.add(address)
-    import_schedule(session, {"queues": {"2": "12:00-16:00"}})
+    import_schedule(session, {"2": "12:00-16:00"})
     for user in ("u1", "u2", "u3"):
         session.add(
             Report(user_id=user, street="Шевченка", house="10", status="on", created_at=NOW)
@@ -32,7 +32,7 @@ def test_address_status_combines_schedule_and_reports(session):
 def test_format_status_renders_all_parts(session):
     address = Address(street="Зелена", house="7", queue=4)
     session.add(address)
-    import_schedule(session, {"queues": {"4": "14:00-18:00"}})
+    import_schedule(session, {"4": "14:00-18:00"})
 
     text = format_status(address_status(session, address, NOW))
 
