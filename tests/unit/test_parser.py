@@ -37,3 +37,10 @@ def test_parse_empty_string_means_no_outages():
 def test_parse_invalid_string_raises_parser_error(bad):
     with pytest.raises(ScheduleParseError):
         parse_intervals(bad)
+
+
+def test_format_interval_returns_start_and_end_strings():
+    from app.services.parser import format_interval
+
+    assert format_interval((time(8, 0), time(12, 0))) == ("08:00", "12:00")
+    assert format_interval((time(20, 0), time(0, 0))) == ("20:00", "24:00")

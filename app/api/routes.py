@@ -18,7 +18,7 @@ from app.domain import PowerState
 from app.models import Address, Subscription
 from app.services import addresses, notifications, reports, schedules
 from app.services.address_status import address_status
-from app.services.parser import ScheduleParseError, format_intervals
+from app.services.parser import ScheduleParseError, format_interval
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "web" / "templates")
@@ -85,8 +85,7 @@ def get_schedule(queue: int, session: SessionDep) -> dict:
     return {
         "queue": queue,
         "intervals": [
-            dict(zip(("start", "end"), format_intervals([i]).split("-"), strict=True))
-            for i in intervals
+            dict(zip(("start", "end"), format_interval(i), strict=True)) for i in intervals
         ],
     }
 

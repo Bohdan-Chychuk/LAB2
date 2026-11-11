@@ -44,6 +44,12 @@ def _fmt(value: time, *, is_end: bool) -> str:
     return "24:00" if is_end and value == time(0, 0) else value.strftime("%H:%M")
 
 
+def format_interval(interval: Interval) -> tuple[str, str]:
+    """(time(20, 0), time(0, 0)) -> ("20:00", "24:00")."""
+    start, end = interval
+    return _fmt(start, is_end=False), _fmt(end, is_end=True)
+
+
 def format_intervals(intervals: list[Interval]) -> str:
     """Канонічний рядок графіка: "08:00-12:00, 16:00-20:00"."""
-    return ", ".join(f"{_fmt(s, is_end=False)}-{_fmt(e, is_end=True)}" for s, e in intervals)
+    return ", ".join("-".join(format_interval(i)) for i in intervals)
