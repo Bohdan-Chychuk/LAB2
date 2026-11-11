@@ -2,11 +2,15 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
 from app.bootstrap import init_database
+
+STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
 
 
 def create_app(db_url: str | None = None, demo_schedule: bool = True) -> FastAPI:
@@ -20,5 +24,6 @@ def create_app(db_url: str | None = None, demo_schedule: bool = True) -> FastAPI
     app = FastAPI(title="СвітлоЛьвів Lite", lifespan=lifespan)
     app.state.engine = engine
     app.state.session_factory = session_factory
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(router)
     return app

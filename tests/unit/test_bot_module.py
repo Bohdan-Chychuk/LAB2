@@ -3,12 +3,19 @@
 import asyncio
 import importlib
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 pytest.importorskip("aiogram")
+
+
+def run(coro):
+    """asyncio.run в окремому потоці: Playwright (e2e) тримає event loop у головному."""
+    with ThreadPoolExecutor(1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 def test_import_does_not_touch_database(tmp_path, monkeypatch):
@@ -28,8 +35,8 @@ def test_handlers_use_injected_session_factory(db_url):
     deps = {k: dp.workflow_data[k] for k in ("session_factory", "user_addresses")}
     message = SimpleNamespace(from_user=SimpleNamespace(id=42), answer=AsyncMock())
 
-    asyncio.run(set_address(message, SimpleNamespace(args="Шевченка 10"), **deps))
-    asyncio.run(get_status(message, **deps))
+    run(set_address(message, SimpleNamespace(args="Шевченка 10"), **deps))
+    run(get_status(message, **deps))
     engine.dispose()
 
     first, second = (call.args[0] for call in message.answer.await_args_list)
