@@ -32,3 +32,25 @@ def test_find_queue_house_letter_is_case_insensitive(addresses):
 def test_find_queue_unknown_address_returns_none(addresses):
     assert find_queue(addresses, "Шевченка", "999") is None
     assert find_queue(addresses, "Неіснуюча", "1") is None
+
+
+def test_address_keys_are_filled_automatically():
+    address = Address(street="Княгині  Ольги", house="14А", queue=4)
+    assert (address.street_key, address.house_key) == ("княгині ольги", "14а")
+
+
+def test_find_queue_uses_indexed_query(addresses):
+    statements = []
+    engine = addresses.get_bind()
+    from sqlalchemy import event
+
+    def log(*args):
+        statements.append(args[2])
+
+    event.listen(engine, "before_cursor_execute", log)
+    try:
+        assert find_queue(addresses, "шевченка", "10") == 3
+    finally:
+        event.remove(engine, "before_cursor_execute", log)
+    assert len(statements) == 1
+    assert "street_key = ?" in statements[0]

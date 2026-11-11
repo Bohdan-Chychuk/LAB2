@@ -1,6 +1,17 @@
-"""Спільні доменні типи."""
+"""Спільні доменні типи та нормалізація адрес."""
 
+import re
 from enum import StrEnum
+
+_STREET_PREFIX = re.compile(r"^(вул\.|вулиця|просп\.|проспект|пл\.|площа)\s*", re.IGNORECASE)
+
+
+def normalize(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
+def normalize_street(street: str) -> str:
+    return _STREET_PREFIX.sub("", normalize(street))
 
 
 class PowerState(StrEnum):

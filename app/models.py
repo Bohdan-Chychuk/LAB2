@@ -3,18 +3,32 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.db import Base
+from app.domain import normalize
 
 
 class Address(Base):
     __tablename__ = "addresses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    street: Mapped[str] = mapped_column(String(100), index=True)
+    street: Mapped[str] = mapped_column(String(100))
     house: Mapped[str] = mapped_column(String(20))
     queue: Mapped[int] = mapped_column(Integer)
+    # Нормалізовані ключі для пошуку індексом замість перебору всієї таблиці в Python
+    street_key: Mapped[str] = mapped_column(String(100), index=True)
+    house_key: Mapped[str] = mapped_column(String(20))
+
+    @validates("street")
+    def _fill_street_key(self, _key: str, value: str) -> str:
+        self.street_key = normalize(value)  # у БД назви зберігаються без «вул.»
+        return value
+
+    @validates("house")
+    def _fill_house_key(self, _key: str, value: str) -> str:
+        self.house_key = normalize(value)
+        return value
 
 
 class Schedule(Base):

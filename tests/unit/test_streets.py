@@ -33,3 +33,15 @@ def test_suggest_streets_limits_result(session):
     session.add_all([Address(street=f"Вулиця {i:02d}", house="1", queue=1) for i in range(15)])
     session.commit()
     assert len(suggest_streets(session, "вулиця")) == 10
+
+
+def test_suggest_streets_prefix_matches_go_first(session):
+    session.add_all(
+        [Address(street=n, house="1", queue=1) for n in ("Підвальна", "Валова", "Гнатюка")]
+    )
+    session.commit()
+    assert suggest_streets(session, "вал") == ["Валова", "Підвальна"]
+
+
+def test_suggest_streets_treats_percent_literally(streets):
+    assert suggest_streets(streets, "%") == []
