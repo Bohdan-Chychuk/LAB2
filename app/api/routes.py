@@ -1,21 +1,31 @@
-"""REST-ендпоінти. Тонкий шар над app/services."""
+"""REST-ендпоінти. Тонкий шар над app/services; формати — у app/api/schemas.py."""
 
 from collections.abc import Iterator
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.api.schemas import ScheduleIn
-from app.domain import PowerState
+from app.api.schemas import (
+    ChangedQueuesOut,
+    HealthOut,
+    IntervalOut,
+    NotificationOut,
+    QueueOut,
+    ReportIn,
+    ReportOut,
+    ScheduleIn,
+    ScheduleOut,
+    StatusOut,
+    SubscriptionIn,
+    SubscriptionOut,
+)
 from app.models import Address, Subscription
 from app.services import addresses, notifications, reports, schedules
 from app.services.address_status import address_status
@@ -54,8 +64,8 @@ def index(request: Request) -> HTMLResponse:
 
 
 @router.get("/health")
-def health() -> dict:
-    return {"status": "ok"}
+def health() -> HealthOut:
+    return HealthOut()
 
 
 @router.get("/streets")
@@ -64,45 +74,34 @@ def get_streets(session: SessionDep, q: str = "") -> list[str]:
 
 
 @router.get("/queue")
-def get_queue(street: str, house: str, session: SessionDep) -> dict:
-    address = require_address(session, street, house)
-    return {"street": address.street, "house": address.house, "queue": address.queue}
+def get_queue(street: str, house: str, session: SessionDep) -> QueueOut:
+    return QueueOut.model_validate(require_address(session, street, house))
 
 
 @router.post("/schedules/import")
-def import_schedule(data: ScheduleIn, session: SessionDep) -> dict:
-    return {"changed_queues": schedules.import_schedule(session, data.queues)}
+def import_schedule(data: ScheduleIn, session: SessionDep) -> ChangedQueuesOut:
+    return ChangedQueuesOut(changed_queues=schedules.import_schedule(session, data.queues))
 
 
 @router.get("/schedule/{queue}")
-def get_schedule(queue: int, session: SessionDep) -> dict:
+def get_schedule(queue: int, session: SessionDep) -> ScheduleOut:
     intervals = schedules.get_intervals(session, queue)
     if intervals is None:
         raise HTTPException(404, detail=f"Графік для черги {queue} не імпортовано")
-    return {
-        "queue": queue,
-        "intervals": [
-            dict(zip(("start", "end"), format_interval(i), strict=True)) for i in intervals
-        ],
-    }
+    return ScheduleOut(
+        queue=queue,
+        intervals=[IntervalOut(start=s, end=e) for s, e in map(format_interval, intervals)],
+    )
 
 
 @router.get("/status")
-def get_status(street: str, house: str, session: SessionDep, now: NowDep) -> dict:
+def get_status(street: str, house: str, session: SessionDep, now: NowDep) -> StatusOut:
     address = require_address(session, street, house)
-    return asdict(address_status(session, address, now))
-
-
-class SubscriptionIn(BaseModel):
-    user_id: str
-    street: str
-    house: str
-    notify_before: Literal[15, 30, 60] = 30
-    quiet_hours: bool = False
+    return StatusOut.model_validate(address_status(session, address, now))
 
 
 @router.post("/subscriptions", status_code=201)
-def create_subscription(data: SubscriptionIn, session: SessionDep) -> dict:
+def create_subscription(data: SubscriptionIn, session: SessionDep) -> SubscriptionOut:
     address = require_address(session, data.street, data.house)
     sub = Subscription(
         user_id=data.user_id,
@@ -114,35 +113,22 @@ def create_subscription(data: SubscriptionIn, session: SessionDep) -> dict:
     )
     session.add(sub)
     session.commit()
-    return {"id": sub.id, **data.model_dump(), "street": sub.street, "queue": sub.queue}
+    return SubscriptionOut.model_validate(sub)
 
 
 @router.get("/notifications/due")
-def get_due_notifications(session: SessionDep, now: NowDep) -> list[dict]:
+def get_due_notifications(session: SessionDep, now: NowDep) -> list[NotificationOut]:
     subs = session.scalars(select(Subscription).order_by(Subscription.id)).all()
-    return notifications.due_notifications(subs, schedules.load_intervals(session), now)
-
-
-class ReportIn(BaseModel):
-    user_id: str
-    street: str
-    house: str
-    status: PowerState
+    due = notifications.due_notifications(subs, schedules.load_intervals(session), now)
+    return [NotificationOut(**n) for n in due]
 
 
 @router.post("/reports", status_code=201)
-def create_report(data: ReportIn, session: SessionDep, now: NowDep) -> dict:
+def create_report(data: ReportIn, session: SessionDep, now: NowDep) -> ReportOut:
     address = require_address(session, data.street, data.house)
+    new = reports.NewReport(data.user_id, address.street, address.house, data.status)
     try:
-        new = reports.NewReport(data.user_id, address.street, address.house, data.status)
         report = reports.add_report(session, new, now)
     except reports.RateLimitError as exc:
         raise HTTPException(429, detail=str(exc)) from exc
-    return {
-        "id": report.id,
-        "user_id": report.user_id,
-        "street": report.street,
-        "house": report.house,
-        "status": report.status,
-        "created_at": report.created_at,
-    }
+    return ReportOut.model_validate(report)
