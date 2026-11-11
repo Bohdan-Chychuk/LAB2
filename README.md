@@ -3,8 +3,8 @@
 Сервіс для мешканців Львова: черга відключень за адресою, графік на сьогодні, поточний статус світла,
 сповіщення перед відключенням і краудсорсингові репорти «Світло є / немає».
 
-Лабораторна робота №2 «Методології розробки ПЗ» — Extreme Programming (TDD, парне програмування,
-малі релізи, спільний стандарт коду). Специфікація: [CLAUDE_CODE_SPEC.md](CLAUDE_CODE_SPEC.md),
+Лабораторні роботи «Методології розробки ПЗ»: №2 — Extreme Programming (TDD, парне програмування,
+малі релізи, спільний стандарт коду), №3 — рефакторинг ([docs/REFACTORING.md](docs/REFACTORING.md)). Специфікація: [CLAUDE_CODE_SPEC.md](CLAUDE_CODE_SPEC.md),
 беклог Jira: [svitlolviv_xp_jira.csv](svitlolviv_xp_jira.csv).
 
 ## Запуск
@@ -32,7 +32,8 @@ uvicorn app.main:create_app --factory --reload
 | POST | `/reports?now=` | репорт user_id + адреса + status on/off; 429 при спамі |
 | GET | `/` | веб-сторінка |
 
-Параметр `now` (ISO-дата) необов'язковий — за замовчуванням поточний час; потрібен для демо й тестів.
+Параметр `now` (ISO-дата) необов'язковий — за замовчуванням поточний київський час (Europe/Kyiv)
+незалежно від часового поясу сервера; потрібен для демо й тестів. Схеми запитів і відповідей — у Swagger.
 
 ## Тести
 
@@ -56,14 +57,18 @@ python -m bot.bot
 
 ```
 app/
-  main.py, db.py, models.py, seed.py
-  services/   addresses, parser, schedules, status, notifications, reports — чисті функції з now
-  api/routes.py
-  web/templates/index.html
-bot/          aiogram-адаптер над services
+  main.py        фабрика застосунку, lifespan, /static
+  bootstrap.py   init_database() — спільна для API і бота
+  clock.py       поточний київський час
+  domain.py      PowerState, нормалізація адрес
+  db.py, models.py, seed.py
+  services/      addresses, parser, schedules, status, address_status, notifications, reports
+  api/           routes.py (ендпоінти), schemas.py (Pydantic-схеми)
+  web/           templates/index.html, static/app.js, static/style.css
+bot/          aiogram-адаптер над services (DI через workflow_data)
 data/         адреси (~30) і графіки 6 черг
 tests/        unit / integration / e2e
-docs/         PLANNING.md (Planning Game, XP-практики), TEST_REPORT.md
+docs/         PLANNING.md, TEST_REPORT.md, REFACTORING.md
 ```
 
 ## XP-процес

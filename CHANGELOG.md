@@ -21,3 +21,14 @@
 - Веб-сторінка `/` з автопідказкою, графіком, індикатором і кнопками репорту (SVL-22, SVL-23)
 - Telegram-бот на aiogram 3: `/start`, `/address`, `/status` (SVL-24)
 - E2E-тести Playwright, звіт про тестування (SVL-27, SVL-28)
+
+## v1.1 — Рефакторинг (ЛР № 3)
+- Київський час замість `datetime.now()` без поясу — коректний статус на сервері в UTC (SVL-34)
+- `address_status()` спільний для API і бота, `PowerState` замість рядків (SVL-35, SVL-36)
+- Пошук адрес індексованим SQL-запитом (SVL-37)
+- Валідація графіка схемою `ScheduleIn`: 422 замість 500; схеми відповідей в OpenAPI (SVL-38, SVL-39)
+- `format_interval()`, `NewReport`, декомпозиція `actual_status` (SVL-40, SVL-43, SVL-44)
+- Закриття пулу з’єднань (lifespan), `init_database()`, бот без глобального стану (SVL-41, SVL-42)
+- CSS/JS винесено в `app/web/static`, захист від XSS (SVL-45)
+- 135 тестів, деталі — `docs/REFACTORING.md`
+
