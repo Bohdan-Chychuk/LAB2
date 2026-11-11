@@ -19,7 +19,13 @@ select = ["E", "F", "W", "I", "B", "UP"]
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = ["e2e: наскрізні тести Playwright"]
-filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using `httpx`"]
+filterwarnings = [
+    "ignore::DeprecationWarning:fastapi.testclient",
+    "ignore:Using `httpx`",
+    # SVL-41: незакрите з’єднання з БД — помилка, а не попередження
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "bot"]
