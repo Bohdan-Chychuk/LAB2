@@ -5,12 +5,12 @@
 
 import asyncio
 import os
-from datetime import datetime
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 
+from app.clock import now_local
 from app.db import Base, database_url, make_engine, make_session_factory
 from app.seed import seed_addresses, seed_schedule
 from bot.texts import HELP, address_text, parse_address, status_text
@@ -46,7 +46,7 @@ async def get_status(message: Message) -> None:
         await message.answer("Спершу вкажіть адресу: /address Шевченка 10")
         return
     with SessionLocal() as session:
-        await message.answer(status_text(session, *address, datetime.now()))
+        await message.answer(status_text(session, *address, now_local()))
 
 
 async def main() -> None:

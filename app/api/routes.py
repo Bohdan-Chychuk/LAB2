@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import clock
 from app.models import Address, Subscription
 from app.services import addresses, notifications, reports, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
@@ -26,6 +27,14 @@ def get_session(request: Request) -> Iterator[Session]:
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def get_now(now: datetime | None = None) -> datetime:
+    """Параметр ?now= для демо й тестів; за замовчуванням — поточний київський час."""
+    return clock.to_local(now) if now else clock.now_local()
+
+
+NowDep = Annotated[datetime, Depends(get_now)]
 
 
 def require_address(session: Session, street: str, house: str) -> Address:
@@ -80,8 +89,7 @@ def get_schedule(queue: int, session: SessionDep) -> dict:
 
 
 @router.get("/status")
-def get_status(street: str, house: str, session: SessionDep, now: datetime | None = None) -> dict:
-    now = now or datetime.now()
+def get_status(street: str, house: str, session: SessionDep, now: NowDep) -> dict:
     address = require_address(session, street, house)
     intervals = schedules.get_intervals(session, address.queue) or []
     outage = status.next_outage(intervals, now)
@@ -123,11 +131,9 @@ def create_subscription(data: SubscriptionIn, session: SessionDep) -> dict:
 
 
 @router.get("/notifications/due")
-def get_due_notifications(session: SessionDep, now: datetime | None = None) -> list[dict]:
+def get_due_notifications(session: SessionDep, now: NowDep) -> list[dict]:
     subs = session.scalars(select(Subscription).order_by(Subscription.id)).all()
-    return notifications.due_notifications(
-        subs, schedules.load_intervals(session), now or datetime.now()
-    )
+    return notifications.due_notifications(subs, schedules.load_intervals(session), now)
 
 
 class ReportIn(BaseModel):
@@ -138,11 +144,11 @@ class ReportIn(BaseModel):
 
 
 @router.post("/reports", status_code=201)
-def create_report(data: ReportIn, session: SessionDep, now: datetime | None = None) -> dict:
+def create_report(data: ReportIn, session: SessionDep, now: NowDep) -> dict:
     address = require_address(session, data.street, data.house)
     try:
         report = reports.add_report(
-            session, data.user_id, address.street, address.house, data.status, now or datetime.now()
+            session, data.user_id, address.street, address.house, data.status, now
         )
     except reports.RateLimitError as exc:
         raise HTTPException(429, detail=str(exc)) from exc
