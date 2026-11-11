@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.domain import PowerState
 from app.services import addresses, reports, schedules, status
 
 HELP = (
@@ -44,5 +45,7 @@ def status_text(session: Session, street: str, house: str, now: datetime) -> str
         lines.append(f"Наступне відключення через {status.minutes_until(outage, now)} хв")
     actual = reports.actual_status(session, address.street, now)
     if actual:
-        lines.append(f"За репортами сусідів: {'світло є' if actual == 'on' else 'світла немає'}")
+        lines.append(
+            f"За репортами сусідів: {'світло є' if actual is PowerState.ON else 'світла немає'}"
+        )
     return "\n".join(lines)

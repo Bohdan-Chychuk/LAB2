@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
+from app.domain import PowerState
 from app.models import Address, Subscription
 from app.services import addresses, notifications, reports, schedules, status
 from app.services.parser import ScheduleParseError, format_intervals
@@ -98,7 +99,7 @@ def get_status(street: str, house: str, session: SessionDep, now: NowDep) -> dic
         "house": address.house,
         "queue": address.queue,
         "now": now,
-        "planned": "on" if status.is_power_on(intervals, now) else "off",
+        "planned": PowerState.from_power(status.is_power_on(intervals, now)),
         "next_change": status.next_change(intervals, now),
         "next_outage": outage,
         "minutes_to_outage": status.minutes_until(outage, now),
@@ -140,7 +141,7 @@ class ReportIn(BaseModel):
     user_id: str
     street: str
     house: str
-    status: Literal["on", "off"]
+    status: PowerState
 
 
 @router.post("/reports", status_code=201)

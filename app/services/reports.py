@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain import PowerState
 from app.models import Report
 
-STATUSES = ("on", "off")
 THRESHOLD = 3
 WINDOW = timedelta(minutes=30)
 ANTISPAM = timedelta(minutes=10)
@@ -21,7 +21,7 @@ class RateLimitError(Exception):
 def add_report(
     session: Session, user_id: str, street: str, house: str, status: str, now: datetime
 ) -> Report:
-    if status not in STATUSES:
+    if status not in set(PowerState):
         raise ValueError(f"Невідомий статус: {status!r}")
     recent = session.scalar(
         select(Report.id).where(
@@ -46,7 +46,7 @@ def actual_status(
     now: datetime,
     threshold: int = THRESHOLD,
     window: timedelta = WINDOW,
-) -> str | None:
+) -> PowerState | None:
     """Фактичний стан на вулиці: >= threshold однакових репортів різних людей за window."""
     rows = session.scalars(
         select(Report)
@@ -57,7 +57,7 @@ def actual_status(
     counts = Counter(r.status for r in latest.values())
     winners = [s for s, c in counts.items() if c >= threshold]
     if len(winners) <= 1:
-        return winners[0] if winners else None
-    return max(
-        (r for r in latest.values() if r.status in winners), key=lambda r: r.created_at
-    ).status
+        return PowerState(winners[0]) if winners else None
+    return PowerState(
+        max((r for r in latest.values() if r.status in winners), key=lambda r: r.created_at).status
+    )
