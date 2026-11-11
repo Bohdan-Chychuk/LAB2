@@ -52,6 +52,31 @@ def add_report(session: Session, new: NewReport, now: datetime) -> Report:
     return report
 
 
+def _recent_reports(
+    session: Session, street: str, now: datetime, window: timedelta
+) -> list[Report]:
+    query = (
+        select(Report)
+        .where(Report.street == street, Report.created_at > now - window, Report.created_at <= now)
+        .order_by(Report.created_at)
+    )
+    return list(session.scalars(query))
+
+
+def _latest_per_user(rows: list[Report]) -> list[Report]:
+    """Кожен користувач має один голос — його останній репорт."""
+    return list({r.user_id: r for r in rows}.values())
+
+
+def _decide(votes: list[Report], threshold: int) -> PowerState | None:
+    """Стан, підтверджений >= threshold голосами; якщо таких два — новіший."""
+    counts = Counter(r.status for r in votes)
+    confirmed = [r for r in votes if counts[r.status] >= threshold]
+    if not confirmed:
+        return None
+    return PowerState(max(confirmed, key=lambda r: r.created_at).status)
+
+
 def actual_status(
     session: Session,
     street: str,
@@ -59,17 +84,6 @@ def actual_status(
     threshold: int = THRESHOLD,
     window: timedelta = WINDOW,
 ) -> PowerState | None:
-    """Фактичний стан на вулиці: >= threshold однакових репортів різних людей за window."""
-    rows = session.scalars(
-        select(Report)
-        .where(Report.street == street, Report.created_at > now - window, Report.created_at <= now)
-        .order_by(Report.created_at)
-    ).all()
-    latest = {r.user_id: r for r in rows}  # останній репорт кожного користувача
-    counts = Counter(r.status for r in latest.values())
-    winners = [s for s, c in counts.items() if c >= threshold]
-    if len(winners) <= 1:
-        return PowerState(winners[0]) if winners else None
-    return PowerState(
-        max((r for r in latest.values() if r.status in winners), key=lambda r: r.created_at).status
-    )
+    """Фактичний стан на вулиці за репортами різних людей за останні window хвилин."""
+    votes = _latest_per_user(_recent_reports(session, street, now, window))
+    return _decide(votes, threshold)
