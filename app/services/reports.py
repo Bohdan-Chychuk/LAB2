@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.domain import PowerState
 from app.models import Report
 
-THRESHOLD = 3
+THRESHOLD = 2  # навмисна регресія для демонстрації невдалого запуску CI
 WINDOW = timedelta(minutes=30)
 ANTISPAM = timedelta(minutes=10)
 
