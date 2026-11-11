@@ -1,0 +1,84 @@
+# Конвеєр CI/CD СвітлоЛьвів Lite (ЛР № 4)
+#
+#   CI:  lint ─┐
+#              ├─> e2e ─> CD: docker (артефакт → GHCR) ─> deploy-staging (+ smoke)
+#        test ─┘
+#
+# Будь-яка помилка зупиняє конвеєр: наступні стадії отримують статус skipped.
+name: CI/CD
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: "CI · Статичний аналіз"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Встановити аналізатори
+        run: pip install -r requirements-dev.txt
+      - name: Ruff (лінтер, стандарт коду)
+        run: ruff check . --output-format=github
+      - name: Black (форматування)
+        run: black --check --diff .
+      - name: Bandit (безпека)
+        run: bandit -q -r app bot
+      - name: Xenon (поріг цикломатичної складності)
+        run: xenon --max-absolute B --max-modules A --max-average A app bot
+
+  test:
+    name: "CI · Збірка, модульні та інтеграційні тести"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Збірка — встановлення залежностей
+        run: pip install -r requirements-dev.txt -r requirements-bot.txt
+      - name: Збірка — компіляція модулів
+        run: python -m compileall -q app bot
+      - name: Модульні та інтеграційні тести з покриттям
+        run: >
+          pytest tests/unit tests/integration
+          --cov=app --cov=bot --cov-report=term-missing --cov-report=xml:reports/coverage.xml
+          --cov-fail-under=90 --junitxml=reports/junit-unit-integration.xml
+      - name: Підсумок покриття
+        if: always()
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import pathlib, xml.etree.ElementTree as ET
+          p = pathlib.Path("reports/coverage.xml")
+          if p.exists():
+              rate = float(ET.parse(p).getroot().get("line-rate")) * 100
+              print(f"### Покриття коду: {rate:.1f} %")
+          EOF
+      - name: Зберегти звіти тестування
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: reports/
