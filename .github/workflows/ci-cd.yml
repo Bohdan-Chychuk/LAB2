@@ -82,3 +82,28 @@ jobs:
         with:
           name: test-reports
           path: reports/
+
+  e2e:
+    name: "CI · E2E-тести (Playwright)"
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Встановити Chromium
+        run: playwright install --with-deps chromium
+      - name: E2E-тести
+        run: >
+          pytest tests/e2e -v --junitxml=reports/junit-e2e.xml
+          --tracing=retain-on-failure --output=test-results
+      - name: Зберегти трасування невдалих тестів
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
