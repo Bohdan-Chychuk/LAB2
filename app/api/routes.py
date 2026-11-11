@@ -138,9 +138,8 @@ class ReportIn(BaseModel):
 def create_report(data: ReportIn, session: SessionDep, now: NowDep) -> dict:
     address = require_address(session, data.street, data.house)
     try:
-        report = reports.add_report(
-            session, data.user_id, address.street, address.house, data.status, now
-        )
+        new = reports.NewReport(data.user_id, address.street, address.house, data.status)
+        report = reports.add_report(session, new, now)
     except reports.RateLimitError as exc:
         raise HTTPException(429, detail=str(exc)) from exc
     return {

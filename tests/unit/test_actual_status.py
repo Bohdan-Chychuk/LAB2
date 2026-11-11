@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
 
-from app.services.reports import actual_status, add_report
+from app.services.reports import NewReport, actual_status, add_report
 
 NOW = datetime(2026, 10, 13, 18, 0)
 
 
 def add(session, user, status, minutes_ago=0, street="Шевченка", house="10"):
-    add_report(session, user, street, house, status, NOW - timedelta(minutes=minutes_ago))
+    add_report(
+        session, NewReport(user, street, house, status), NOW - timedelta(minutes=minutes_ago)
+    )
 
 
 def test_below_threshold_actual_is_unknown(session):

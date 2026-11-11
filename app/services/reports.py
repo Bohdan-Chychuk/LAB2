@@ -1,6 +1,7 @@
 """Краудсорсингові репорти «Світло є / немає»."""
 
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -18,23 +19,34 @@ class RateLimitError(Exception):
     pass
 
 
-def add_report(
-    session: Session, user_id: str, street: str, house: str, status: str, now: datetime
-) -> Report:
-    if status not in set(PowerState):
-        raise ValueError(f"Невідомий статус: {status!r}")
+@dataclass(frozen=True)
+class NewReport:
+    """Introduce Parameter Object: дані репорту замість 4 окремих аргументів."""
+
+    user_id: str
+    street: str
+    house: str
+    status: PowerState
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "status", PowerState(self.status))  # ValueError для невідомого
+
+
+def add_report(session: Session, new: NewReport, now: datetime) -> Report:
     recent = session.scalar(
         select(Report.id).where(
-            Report.user_id == user_id,
-            Report.street == street,
-            Report.house == house,
+            Report.user_id == new.user_id,
+            Report.street == new.street,
+            Report.house == new.house,
             Report.created_at > now - ANTISPAM,
             Report.created_at <= now,
         )
     )
     if recent is not None:
         raise RateLimitError("Не частіше 1 репорту на адресу за 10 хвилин")
-    report = Report(user_id=user_id, street=street, house=house, status=status, created_at=now)
+    report = Report(
+        user_id=new.user_id, street=new.street, house=new.house, status=new.status, created_at=now
+    )
     session.add(report)
     session.commit()
     return report
